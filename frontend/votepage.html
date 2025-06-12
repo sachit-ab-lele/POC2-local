@@ -13,14 +13,13 @@
             flex-direction: column;
             align-items: center;
             min-height: calc(100vh - 40px); /* Adjust for margin */
-        }
+        } 
     </style>
 </head>
 <body>
     <h1 id="pollQuestionTitle" class="text-4xl text-gray-800 mb-8 text-center">Loading Poll...</h1>
 
     <div id="voteButtonsContainer" class="flex flex-wrap justify-center space-x-4 mb-12">
-        <!-- Vote buttons will be dynamically inserted here -->
     </div>
 
     <h2 class="text-3xl text-gray-700 mb-4">Live Results</h2>
@@ -30,10 +29,9 @@
     </pre>
 
     <script>
-        let currentPollOptions = []; // To store options for dynamic result display
-        // Function to cast a vote
+        let currentPollOptions = [];
         async function vote(candidateName) {
-            const errorMessageElement = document.getElementById("results"); // Or a dedicated error element for voting
+            const errorMessageElement = document.getElementById("results");
             try {
                 const response = await fetch(`http://localhost:8000/vote?option=${encodeURIComponent(candidateName)}`, {
                     method: "POST"
@@ -41,13 +39,11 @@
 
                 if (response.ok) {
                     console.log(`Vote for ${candidateName} successfully cast!`);
-                    // Immediately fetch results after voting to show updated count
                     fetchResults();
                 } else {
                     const errorData = await response.json();
                     const detail = errorData.detail || 'Unknown error during vote.';
                     console.error('Error casting vote:', detail);
-                    // Display error more gracefully if possible, e.g., in the results area or a dedicated spot
                     errorMessageElement.innerText = `Error casting vote: ${detail}`;
                 }
             } catch (error) {
@@ -56,11 +52,10 @@
             }
         }
 
-        // Function to fetch and display results
         async function fetchAndDisplayResults() {
             const resultsElement = document.getElementById("results");
             try {
-                const response = await fetch('http://localhost:8001/results'); // Corrected port for result-api
+                const response = await fetch('http://localhost:8001/results');
                 if (response.ok) {
                     const data = await response.json();
                     let resultsText = "";
@@ -68,7 +63,7 @@
                         currentPollOptions.forEach(option => {
                             resultsText += `${option}: ${data[option] !== undefined ? data[option] : "0"}\n`;
                         });
-                    } else if (Object.keys(data).length > 0 && !data.error) { // Fallback if options not set but results exist
+                    } else if (Object.keys(data).length > 0 && !data.error) {
                          Object.entries(data).forEach(([key, value]) => {
                             if (!key.startsWith('_')) { // Exclude metadata like _poll_question
                                 resultsText += `${key}: ${value}\n`;
@@ -88,12 +83,11 @@
             }
         }
 
-        // Function to load active poll and set up the page
         async function loadActivePoll() {
             const pollQuestionTitle = document.getElementById('pollQuestionTitle');
             const voteButtonsContainer = document.getElementById('voteButtonsContainer');
             try {
-                const response = await fetch('http://localhost:8000/polls/active'); // Updated endpoint
+                const response = await fetch('http://localhost:8000/polls/active');
                 if (!response.ok) {
                     pollQuestionTitle.textContent = 'No Active Poll';
                     voteButtonsContainer.innerHTML = '<p class="text-gray-600">There is no active poll to vote on currently.</p>';
@@ -102,8 +96,8 @@
                 }
                 const poll = await response.json();
                 pollQuestionTitle.textContent = poll.question;
-                currentPollOptions = poll.options; // Store options
-                voteButtonsContainer.innerHTML = ''; // Clear previous buttons
+                currentPollOptions = poll.options;
+                voteButtonsContainer.innerHTML = '';
                 poll.options.forEach(option => {
                     const button = document.createElement('button');
                     button.textContent = `Vote for ${option}`;
@@ -111,18 +105,14 @@
                     button.onclick = () => vote(option);
                     voteButtonsContainer.appendChild(button);
                 });
-                fetchAndDisplayResults(); // Fetch results for the loaded poll
+                fetchAndDisplayResults();
             } catch (error) {
                 pollQuestionTitle.textContent = 'Error Loading Poll';
                 console.error('Error fetching active poll:', error);
                 document.getElementById("results").innerText = "Could not load poll information.";
             }
         }
-
-        // Load active poll when the page loads
         loadActivePoll();
-
-        // Refresh results every 2 seconds (2000 milliseconds)
         setInterval(fetchAndDisplayResults, 2000);
     </script>
 </body>
