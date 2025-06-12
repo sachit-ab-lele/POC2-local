@@ -34,12 +34,12 @@
 
     <script>
         document.getElementById("loginForm").addEventListener("submit", async function(event) {
-            event.preventDefault(); // Prevent default form submission
+            event.preventDefault();
 
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
             const errorMessageElement = document.getElementById("errorMessage");
-            errorMessageElement.style.display = "none"; // Hide any previous error message
+            errorMessageElement.style.display = "none";
 
             const formData = new FormData();
             formData.append("username", username);
@@ -48,13 +48,11 @@
             try {
                 const response = await fetch('http://localhost:8000/login', {
                     method: 'POST',
-                    body: formData // Send as FormData
+                    body: formData
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log("Login response data:", data); // Add this line for debugging
-                    console.log("Received role:", data.role); // Add this line for debugging
                     if (data.role === "admin") {
                         window.location.href = "/admin.html";
                     } else {
@@ -63,7 +61,7 @@
                 } else {
                     const errorData = await response.json();
                     errorMessageElement.textContent = errorData.detail || "Login failed. Please check your credentials.";
-                    errorMessageElement.style.display = "block"; // Show the error message
+                    errorMessageElement.style.display = "block";
                 }
             } catch (error) {
                 console.error('Login error:', error);

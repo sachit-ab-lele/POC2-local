@@ -81,7 +81,7 @@
                 const response = await fetch('http://localhost:8000/polls');
                 if (!response.ok) {
                     pollsListDiv.innerHTML = '<p class="text-red-600">Error loading polls.</p>';
-                    return;
+                    return; // Stop execution if there's an error
                 }
                 const polls = await response.json();
                 pollsListDiv.innerHTML = ''; // Clear previous list
@@ -113,7 +113,7 @@
 
         createPollForm.addEventListener('submit', async function(event) {
             event.preventDefault();
-            createPollMessage.textContent = ''; // Clear previous message
+            createPollMessage.textContent = '';
             const question = document.getElementById('pollQuestion').value;
             const options = document.getElementById('pollOptions').value.split(',').map(opt => opt.trim()).filter(opt => opt);
 
@@ -123,7 +123,7 @@
                 return;
             }
             try {
-                const response = await fetch('http://localhost:8000/polls', { // Changed endpoint
+                const response = await fetch('http://localhost:8000/polls', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ question, options })
@@ -133,7 +133,7 @@
                 createPollMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
                 if (response.ok) {
                     createPollForm.reset();
-                    loadPolls(); // Refresh the list
+                    loadPolls();
                 }
             } catch (error) {
                 createPollMessage.textContent = 'Network error creating poll.';
@@ -149,7 +149,7 @@
                 const data = await response.json();
                 pollActionMessage.textContent = data.message || (response.ok ? 'Poll activated.' : 'Error activating poll.');
                 pollActionMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
-                loadPolls(); // Refresh list
+                loadPolls();
             } catch (error) {
                 pollActionMessage.textContent = 'Network error activating poll.';
                 pollActionMessage.className = 'mt-3 text-sm text-red-600';
@@ -164,14 +164,13 @@
                 const data = await response.json();
                 pollActionMessage.textContent = data.message || (response.ok ? 'Poll deleted.' : 'Error deleting poll.');
                 pollActionMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
-                loadPolls(); // Refresh list
+                loadPolls();
             } catch (error) {
                 pollActionMessage.textContent = 'Network error deleting poll.';
                 pollActionMessage.className = 'mt-3 text-sm text-red-600';
             }
         }
 
-        // Initial load of polls
         loadPolls();
     </script>
 </body>
