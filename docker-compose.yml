@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  frontend:
+    image: nginx:alpine
+    volumes:
+      - ./frontend:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+
+  vote-api:
+    build: ./vote-api
+    environment:
+      - REDIS_HOST=redis
+      - MONGO_HOST=mongo
+    depends_on:
+      - redis
+      - mongo
+    ports:
+      - "8000:8000"
+
+  result-api:
+    build: ./result-api
+    environment:
+      - REDIS_HOST=redis
+      - MONGO_HOST=mongo
+    depends_on:
+      - redis
+      - mongo
+    ports:
+      - "8001:8000"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6380:6379"
+
+  mongo:
+    image: mongo
+    ports:
+      - "27018:27017"

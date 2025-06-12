@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin - Poll Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 2rem;
+        }
+        label {
+            font-weight: 600;
+        }
+        input[type="text"], button {
+            transition: all 0.3s ease-in-out;
+        }
+        #currentPollStatus {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .poll-item { margin-bottom: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: 4px; background-color: #f9f9f9; }
+        .poll-item h3 { margin-top: 0; }
+        .poll-item button { margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Poll Management</h1>
+    <div class="container">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Create New Poll</h2>
+        <form id="createPollForm" class="space-y-4">
+            <div>
+                <label for="pollQuestion" class="block text-sm font-medium text-gray-700">Poll Question:</label>
+                <input type="text" id="pollQuestion" name="pollQuestion" required
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <div>
+                <label for="pollOptions" class="block text-sm font-medium text-gray-700">Poll Options (comma-separated):</label>
+                <input type="text" id="pollOptions" name="pollOptions" required placeholder="e.g., Option A,Option B,Option C"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Create Poll
+            </button>
+        </form>
+        <p id="createPollMessage" class="mt-3 text-sm"></p>
+    </div>
+
+    <div class="container">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">Existing Polls</h2>
+        <div id="pollsList">
+            <p>Loading polls...</p>
+        </div>
+        <p id="pollActionMessage" class="mt-3 text-sm"></p>
+    </div>
+
+    <script>
+        const createPollForm = document.getElementById('createPollForm');
+        const createPollMessage = document.getElementById('createPollMessage');
+        const pollsListDiv = document.getElementById('pollsList');
+        const pollActionMessage = document.getElementById('pollActionMessage');
+
+        async function loadPolls() {
+            try {
+                const response = await fetch('http://localhost:8000/polls');
+                if (!response.ok) {
+                    pollsListDiv.innerHTML = '<p class="text-red-600">Error loading polls.</p>';
+                    return;
+                }
+                const polls = await response.json();
+                pollsListDiv.innerHTML = ''; // Clear previous list
+
+                if (polls.length === 0) {
+                    pollsListDiv.innerHTML = '<p>No polls created yet.</p>';
+                    return;
+                }
+
+                polls.forEach(poll => {
+                    const pollElement = document.createElement('div');
+                    pollElement.className = 'poll-item';
+                    pollElement.innerHTML = `
+                        <h3 class="text-lg font-semibold">${poll.question} ${poll.is_active ? '<span class="text-green-600 font-bold">(Active)</span>' : ''}</h3>
+                        <p class="text-sm text-gray-600">Options: ${poll.options.join(', ')}</p>
+                        <p class="text-xs text-gray-500">ID: ${poll._id} | Created: ${new Date(poll.created_at).toLocaleString()}</p>
+                        <div class="mt-2">
+                            ${!poll.is_active ? `<button onclick="activatePoll('${poll._id}')" class="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-sm">Activate</button>` : ''}
+                            <button onclick="deletePoll('${poll._id}', '${poll.question.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm">Delete</button>
+                        </div>
+                    `;
+                    pollsListDiv.appendChild(pollElement);
+                });
+            } catch (error) {
+                console.error("Error fetching polls:", error);
+                pollsListDiv.innerHTML = '<p class="text-red-600">Network error loading polls.</p>';
+            }
+        }
+
+        createPollForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            createPollMessage.textContent = ''; // Clear previous message
+            const question = document.getElementById('pollQuestion').value;
+            const options = document.getElementById('pollOptions').value.split(',').map(opt => opt.trim()).filter(opt => opt);
+
+            if (options.length < 2) {
+                createPollMessage.textContent = 'Please provide at least two options.';
+                createPollMessage.className = 'mt-3 text-sm text-red-600';
+                return;
+            }
+            try {
+                const response = await fetch('http://localhost:8000/polls', { // Changed endpoint
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ question, options })
+                });
+                const data = await response.json();
+                createPollMessage.textContent = response.ok ? `Poll "${data.question}" created successfully.` : (data.detail || 'Error creating poll.');
+                createPollMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
+                if (response.ok) {
+                    createPollForm.reset();
+                    loadPolls(); // Refresh the list
+                }
+            } catch (error) {
+                createPollMessage.textContent = 'Network error creating poll.';
+                createPollMessage.className = 'mt-3 text-sm text-red-600';
+            }
+        });
+
+        async function activatePoll(pollId) {
+            pollActionMessage.textContent = '';
+            if (!confirm('Are you sure you want to activate this poll? Any other active poll will be deactivated.')) return;
+            try {
+                const response = await fetch(`http://localhost:8000/polls/${pollId}/activate`, { method: 'PUT' });
+                const data = await response.json();
+                pollActionMessage.textContent = data.message || (response.ok ? 'Poll activated.' : 'Error activating poll.');
+                pollActionMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
+                loadPolls(); // Refresh list
+            } catch (error) {
+                pollActionMessage.textContent = 'Network error activating poll.';
+                pollActionMessage.className = 'mt-3 text-sm text-red-600';
+            }
+        }
+
+        async function deletePoll(pollId, pollQuestion) {
+            pollActionMessage.textContent = '';
+            if (!confirm(`Are you sure you want to delete the poll: "${pollQuestion}"?`)) return;
+            try {
+                const response = await fetch(`http://localhost:8000/polls/${pollId}`, { method: 'DELETE' });
+                const data = await response.json();
+                pollActionMessage.textContent = data.message || (response.ok ? 'Poll deleted.' : 'Error deleting poll.');
+                pollActionMessage.className = response.ok ? 'mt-3 text-sm text-green-600' : 'mt-3 text-sm text-red-600';
+                loadPolls(); // Refresh list
+            } catch (error) {
+                pollActionMessage.textContent = 'Network error deleting poll.';
+                pollActionMessage.className = 'mt-3 text-sm text-red-600';
+            }
+        }
+
+        // Initial load of polls
+        loadPolls();
+    </script>
+</body>
+</html>
