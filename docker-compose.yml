@@ -24,6 +24,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - MONGO_HOST=mongo
+      - ADMIN_EMAIL=lelesachit@gmail.com # Add this line
     depends_on:
       - redis
       - mongo
