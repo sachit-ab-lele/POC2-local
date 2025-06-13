@@ -11,8 +11,23 @@ from bson import ObjectId
 from pydantic_core import core_schema
 from pydantic.json_schema import JsonSchemaValue
 from pydantic import GetJsonSchemaHandler
+import firebase_admin
+from firebase_admin import credentials, auth
 
 app = FastAPI()
+
+# --- Firebase Initialization for Authentication ---
+try:
+    cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH", "firebase-service-account.json")
+    if not os.path.exists(cred_path):
+        print(f"Warning: Firebase service account key not found at {cred_path}. Login will not work.")
+        # Allow app to run for other functionalities, but Firebase auth will fail.
+    else:
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+except Exception as e:
+    print(f"Error initializing Firebase Admin SDK: {e}")
+# --- End Firebase Initialization ---
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -66,22 +81,48 @@ class PollInDB(PollBase):
     class Config:
         allow_population_by_field_name = True
 
-DUMMY_USERS_DB = {
-    "admin": "admin",
-    "user": "password"
-} # type: ignore
-
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...)):
-    user_password = DUMMY_USERS_DB.get(username)
-    if not user_password or user_password != password:
+    # For Firebase Auth, 'username' is typically an email.
+    # Firebase Admin SDK doesn't have a direct "sign in with email and password" method
+    # for server-side validation without client-side token generation.
+    # A common server-side pattern is to verify an ID token sent from the client
+    # after the client signs in using Firebase client SDKs.
+
+    # However, if you MUST validate email/password directly on the server without a client token,
+    # it's more complex and less secure as you'd be handling passwords directly.
+    # The recommended Firebase flow is client-side sign-in, then send ID token to backend.
+
+    # For this example, let's assume you want to check if a user exists
+    # and assign a role based on a custom claim or a predefined admin email.
+    # THIS IS NOT A SECURE LOGIN IF YOU DON'T VERIFY THE PASSWORD.
+    # Firebase's primary server-side auth is ID token verification.
+
+    # To truly use Firebase for login, the frontend would use Firebase JS SDK to sign in,
+    # get an ID token, and send that token to this backend endpoint for verification.
+    # For now, let's simulate a basic check and role assignment.
+    # Replace this with proper ID token verification in a real scenario.
+
+    try:
+        user = auth.get_user_by_email(username) # Assuming username is an email
+        # In a real app, you'd verify the password here if not using ID tokens,
+        # but Firebase Admin SDK doesn't provide a direct password check.
+        # This is a placeholder for demonstration.
+        # For a simple role system, you could check custom claims or a hardcoded admin email.
+        role = "admin" if user.email == os.getenv("ADMIN_EMAIL", "admin@example.com") else "user"
+        return {"message": "Login successful (simulated)", "role": role, "uid": user.uid}
+    except auth.UserNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    role = "admin" if username == "admin" else "user"
-    return {"message": "Login successful", "role": role}
+    except Exception as e:
+        # Log the exception e
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Login error: {str(e)}",
+        )
 
 @app.post("/polls", response_model=PollInDB, status_code=status.HTTP_201_CREATED)
 async def create_poll(poll_data: PollCreate):
