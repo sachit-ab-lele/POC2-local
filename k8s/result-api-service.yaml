@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: result-api
+spec:
+  selector:
+    app: result-api
+  ports:
+  - protocol: TCP
+    port: 8000        # Internal port for the service
+    targetPort: 8000  # Container port
+    nodePort: 30001   # Exposes on NodeIP:30001 (similar to 8001:8000)
+  type: NodePort

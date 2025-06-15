@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote-api
+  labels:
+    app: vote-api
+spec:
+  replicas: 1 # Adjust as needed
+  selector:
+    matchLabels:
+      app: vote-api
+  template:
+    metadata:
+      labels:
+        app: vote-api
+    spec:
+      containers:
+      - name: vote-api
+        image: your-repo/vote-api:latest # Replace with your actual image
+        ports:
+        - containerPort: 8000
+        env:
+        - name: REDIS_HOST
+          value: "redis" # Kubernetes service name for Redis
+        - name: MONGO_HOST
+          value: "mongo" # Kubernetes service name for Mongo
+        - name: GOOGLE_APPLICATION_CREDENTIALS # Standard env var for Google SDKs
+          value: "/etc/firebase/service-account.json"
+        volumeMounts:
+        - name: firebase-secret-volume
+          mountPath: "/etc/firebase" # Mount directory for the secret
+          readOnly: true
+      volumes:
+      - name: firebase-secret-volume
+        secret:
+          secretName: firebase-creds # Name of the secret created earlier

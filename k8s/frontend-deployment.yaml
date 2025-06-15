@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 1 # Adjust as needed
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        # Replace with your actual frontend image
+        # This image should have your static files (from ./frontend) served by Nginx
+        image: nginx:alpine # Or your custom image: your-repo/frontend-app:latest
+        ports:
+        - containerPort: 80
