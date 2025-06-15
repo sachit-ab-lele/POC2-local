@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            memory: "64Mi" # Request 64 Megabytes of memory
+            cpu: "250m"    # Request 0.25 CPU cores (250 millicores)
+          limits:
+            memory: "128Mi" # Limit memory usage to 128 Megabytes
+            cpu: "500m"     # Limit CPU usage to 0.5 CPU cores (500 millicores)

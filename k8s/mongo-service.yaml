@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+spec:
+  selector:
+    app: mongo
+  ports:
+  - protocol: TCP
+    port: 27017        # Port other services in the cluster will use to connect
+    targetPort: 27017   # Port the Mongo container is listening on

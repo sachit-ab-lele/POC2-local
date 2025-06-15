@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+      - name: mongo
+        image: mongo
+        ports:
+        - containerPort: 27017
+        resources:
+          requests:
+            memory: "256Mi" # Request 256 Megabytes of memory
+            cpu: "500m"     # Request 0.5 CPU cores
+          limits:
+            memory: "512Mi" # Limit memory usage to 512 Megabytes
+            cpu: "1"        # Limit CPU usage to 1 CPU core
