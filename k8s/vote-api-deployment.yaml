@@ -24,13 +24,28 @@ spec:
           value: "redis" # Kubernetes service name for Redis
         - name: MONGO_HOST
           value: "mongo" # Kubernetes service name for Mongo
-        - name: GOOGLE_APPLICATION_CREDENTIALS # Standard env var for Google SDKs
-          value: "/etc/firebase/service-account.json"
-        volumeMounts:
-        - name: firebase-secret-volume
-          mountPath: "/etc/firebase" # Mount directory for the secret
-          readOnly: true
-      volumes:
-      - name: firebase-secret-volume
-        secret:
-          secretName: firebase-creds # Name of the secret created earlier
+        - name: MYSQL_HOST
+          value: "mysql" # Kubernetes service name for MySQL
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: mysql-creds
+              key: mysql-user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-creds
+              key: mysql-password
+        - name: MYSQL_DB_NAME # Or whatever your app expects for the database name
+          valueFrom:
+            secretKeyRef:
+              name: mysql-creds
+              key: mysql-database
+        # It's good practice to add resource requests and limits
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
