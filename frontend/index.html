@@ -21,9 +21,13 @@
         <h1 class="text-3xl text-gray-800 mb-6">Login</h1>
         <form id="loginForm" class="flex flex-col">
             <input type="text" id="username" name="username" placeholder="Username" required
-                   class="p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   class="w-full p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
             <input type="password" id="password" name="password" placeholder="Password" required
-                   class="p-3 mb-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                   class="w-full p-3 mb-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="mb-4 text-left">
+                <label class="inline-flex items-center mr-6"><input type="radio" name="role" value="user" class="form-radio" checked> <span class="ml-2">User</span></label>
+                <label class="inline-flex items-center"><input type="radio" name="role" value="admin" class="form-radio"> <span class="ml-2">Admin</span></label>
+            </div>
             <button type="submit"
                     class="bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out text-lg">
                 Login
@@ -38,21 +42,28 @@
 
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
+            const role = document.querySelector('input[name="role"]:checked').value;
             const errorMessageElement = document.getElementById("errorMessage");
             errorMessageElement.style.display = "none";
 
-            const formData = new FormData();
-            formData.append("username", username);
-            formData.append("password", password);
-
             try {
-                const response = await fetch('http://localhost:8000/login', {
+                // auth-api is exposed on port 8002 by docker-compose
+                const response = await fetch('http://localhost:8002/login', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password, role })
                 });
 
+                const data = await response.json(); // Try to parse JSON regardless of status for error messages
+
                 if (response.ok) {
-                    const data = await response.json();
+                    localStorage.setItem('accessToken', data.access_token); // Store the token
+                    localStorage.setItem('userRole', data.role); // Store role
+                    localStorage.setItem('username', username); // Optionally store username
+
+                    // alert(`Login successful! Token: ${data.access_token}`); // For debugging
                     if (data.role === "admin") {
                         window.location.href = "/admin.html";
                     } else {
@@ -60,7 +71,7 @@
                     }
                 } else {
                     const errorData = await response.json();
-                    errorMessageElement.textContent = errorData.detail || "Login failed. Please check your credentials.";
+                    errorMessageElement.textContent = data.detail || "Login failed. Please check your credentials.";
                     errorMessageElement.style.display = "block";
                 }
             } catch (error) {

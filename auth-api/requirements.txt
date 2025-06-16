@@ -1,0 +1,6 @@
+PyMySQL==1.1.0
+python-dotenv==1.0.0
+fastapi==0.104.1
+uvicorn[standard]==0.23.2
+python-jose[cryptography]==3.3.0
+pydantic==2.5.2 # For data validation

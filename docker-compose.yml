@@ -40,3 +40,36 @@ services:
     image: mongo
     ports:
       - "27018:27017"
+    volumes: # Optional: persist mongo data
+      - mongo_data:/data/db
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: yourstrongpassword # Change in production
+      MYSQL_DATABASE: votelogin_db
+      MYSQL_USER: voteuser
+      MYSQL_PASSWORD: votepassword # Change in production
+    ports:
+      - "33060:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  auth-api: # Handles authentication and token generation
+    build: ./auth-api # You will need to create this service
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=voteuser
+      - DB_PASSWORD=votepassword
+      - DB_NAME=votelogin_db
+      - JWT_SECRET=yoursupersecretkey # Change in production
+    depends_on:
+      - mysql
+    ports:
+      - "8002:8000" # Example port, ensure it's unique on the host
+
+volumes:
+  mysql_data:
+  mongo_data: # If you added a volume for mongo
