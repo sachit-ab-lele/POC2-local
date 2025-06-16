@@ -108,8 +108,3 @@ async def login_for_access_token(form_data: UserLogin):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
-
-# WARNING: The 'users' table should now store plain text passwords in the 'password' column.
-# This is highly insecure and should only be used for demonstration purposes.
-# Example SQL to create table (replace password_hash with password):
-# CREATE TABLE IF NOT EXISTS users ( id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL, role ENUM('user', 'admin') NOT NULL );
