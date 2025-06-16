@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0 # Or your preferred version
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-creds
+              key: mysql-root-password
+        - name: MYSQL_DATABASE # Optional: creates this database on startup
+          valueFrom:
+            secretKeyRef:
+              name: mysql-creds
+              key: mysql-database
+        # For production, add volumeMounts and volumes for data persistence
+        # volumeMounts:
+        # - name: mysql-persistent-storage
+        #   mountPath: /var/lib/mysql
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+      # volumes:
+      # - name: mysql-persistent-storage
+      #   persistentVolumeClaim:
+      #     claimName: mysql-pvc # You'd need to create this PVC
