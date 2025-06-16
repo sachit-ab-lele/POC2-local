@@ -29,8 +29,10 @@ spec:
           valueFrom:
             secretKeyRef:
               name: mysql-creds
-              key: mysql-database
-        # For production, add volumeMounts and volumes for data persistence
+              key: mysql-database # This database will be created automatically
+        volumeMounts:
+        - name: mysql-initdb
+          mountPath: /docker-entrypoint-initdb.d # Scripts here run on init
         # volumeMounts:
         # - name: mysql-persistent-storage
         #   mountPath: /var/lib/mysql
