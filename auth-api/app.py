@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
@@ -108,3 +109,11 @@ async def login_for_access_token(form_data: UserLogin):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8080"], # Or ["*"] for testing, but be more specific in production
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods
+    allow_headers=["*"], # Allows all headers
+)

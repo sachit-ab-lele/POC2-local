@@ -1,27 +1,36 @@
 from fastapi import FastAPI
 from pymongo import MongoClient
 from fastapi.middleware.cors import CORSMiddleware
+import redis
 import os
 
 app = FastAPI()
 
+# MongoDB Connection
 client = MongoClient(os.getenv("MONGO_HOST", "mongo"), 27017)
 db = client.voting
-results_collection = db.results
 poll_collection = db.polls
+
+# Redis Connection
+r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, decode_responses=True)
 
 @app.get("/results")
 def get_results():
-    doc = results_collection.find_one(sort=[("_id", -1)])
-    if doc:
-        vote_counts = {k: v for k, v in doc.items() if not k.startswith('_')}
-        return vote_counts
-    else:
-        active_poll = poll_collection.find_one({"is_active": True})
-        if active_poll and active_poll.get("options"):
-            return {option: 0 for option in active_poll.get("options")}
-        return {}
+    active_poll = poll_collection.find_one({"is_active": True})
+    if not active_poll:
+        return {} # Or {"error": "No active poll"}
+
+    options = active_poll.get("options", [])
+    if not options:
+        return {} # Or {"error": "Active poll has no options"}
+
+    vote_counts = {}
+    for option in options:
+        count = r.get(f"vote:{option}")
+        vote_counts[option] = int(count) if count is not None else 0
     
+    return vote_counts
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:8080"],
