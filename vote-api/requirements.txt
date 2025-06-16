@@ -3,4 +3,4 @@ uvicorn[standard]
 pymongo
 python-multipart
 redis
-firebase-admin
+python-jose[cryptography] 

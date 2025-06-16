@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Query, Form, HTTPException, status
+from fastapi import FastAPI, Query, HTTPException, status, Depends
 import redis
 import os
 from pymongo import MongoClient
 from pymongo.results import UpdateResult, DeleteResult
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
 from typing import List, Optional, Any
 from datetime import datetime
@@ -11,23 +12,19 @@ from bson import ObjectId
 from pydantic_core import core_schema
 from pydantic.json_schema import JsonSchemaValue
 from pydantic import GetJsonSchemaHandler
-import firebase_admin
-from firebase_admin import credentials, auth
+from jose import JWTError, jwt
 
 app = FastAPI()
 
-# --- Firebase Initialization for Authentication ---
-try:
-    cred_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_KEY_PATH", "firebase-service-account.json")
-    if not os.path.exists(cred_path):
-        print(f"Warning: Firebase service account key not found at {cred_path}. Login will not work.")
-        # Allow app to run for other functionalities, but Firebase auth will fail.
-    else:
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-except Exception as e:
-    print(f"Error initializing Firebase Admin SDK: {e}")
-# --- End Firebase Initialization ---
+# --- JWT Configuration (should match auth-api) ---
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "yoursupersecretkey") # Ensure this matches auth-api
+ALGORITHM = "HS256"
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # The URL doesn't matter much here as we're not using FastAPI's built-in form login
+
+class TokenData(BaseModel):
+    sub: Optional[str] = None # 'sub' usually holds the username or user ID
+    role: Optional[str] = None
+    id: Optional[int] = None # or str, depending on what auth-api puts in 'id'
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -81,51 +78,37 @@ class PollInDB(PollBase):
     class Config:
         allow_population_by_field_name = True
 
-@app.post("/login")
-async def login(username: str = Form(...), password: str = Form(...)):
-    # For Firebase Auth, 'username' is typically an email.
-    # Firebase Admin SDK doesn't have a direct "sign in with email and password" method
-    # for server-side validation without client-side token generation.
-    # A common server-side pattern is to verify an ID token sent from the client
-    # after the client signs in using Firebase client SDKs.
-
-    # However, if you MUST validate email/password directly on the server without a client token,
-    # it's more complex and less secure as you'd be handling passwords directly.
-    # The recommended Firebase flow is client-side sign-in, then send ID token to backend.
-
-    # For this example, let's assume you want to check if a user exists
-    # and assign a role based on a custom claim or a predefined admin email.
-    # THIS IS NOT A SECURE LOGIN IF YOU DON'T VERIFY THE PASSWORD.
-    # Firebase's primary server-side auth is ID token verification.
-
-    # To truly use Firebase for login, the frontend would use Firebase JS SDK to sign in,
-    # get an ID token, and send that token to this backend endpoint for verification.
-    # For now, let's simulate a basic check and role assignment.
-    # Replace this with proper ID token verification in a real scenario.
-
+# --- JWT Dependency ---
+async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> TokenData:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        user = auth.get_user_by_email(username) # Assuming username is an email
-        # In a real app, you'd verify the password here if not using ID tokens,
-        # but Firebase Admin SDK doesn't provide a direct password check.
-        # This is a placeholder for demonstration.
-        # For a simple role system, you could check custom claims or a hardcoded admin email.
-        role = "admin" if user.email == os.getenv("ADMIN_EMAIL", "admin@example.com") else "user"
-        return {"message": "Login successful (simulated)", "role": role, "uid": user.uid}
-    except auth.UserNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except Exception as e:
-        # Log the exception e
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Login error: {str(e)}",
-        )
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        role: str = payload.get("role")
+        user_id: int = payload.get("id") # or str
+        if username is None or role is None:
+            raise credentials_exception
+        token_data = TokenData(sub=username, role=role, id=user_id)
+    except JWTError:
+        raise credentials_exception
+    return token_data
 
-@app.post("/polls", response_model=PollInDB, status_code=status.HTTP_201_CREATED)
-async def create_poll(poll_data: PollCreate):
+async def require_admin_user(current_user: TokenData = Depends(get_current_user_token_data)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operation not permitted. Admin access required.",
+        )
+    return current_user
+
+# --- Poll Management Endpoints (Admin Only) ---
+@app.post("/polls", response_model=PollInDB, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin_user)])
+async def create_poll(poll_data: PollCreate, current_user: TokenData = Depends(require_admin_user)):
+    # current_user is available if needed, e.g., for logging who created the poll
     new_poll_doc = {
         "question": poll_data.question,
         "options": poll_data.options,
@@ -136,13 +119,13 @@ async def create_poll(poll_data: PollCreate):
     created_poll = poll_collection.find_one({"_id": inserted_result.inserted_id})
     return created_poll
 
-@app.get("/polls", response_model=List[PollInDB])
-async def list_polls():
+@app.get("/polls", response_model=List[PollInDB], dependencies=[Depends(require_admin_user)])
+async def list_polls(current_user: TokenData = Depends(require_admin_user)):
     polls = list(poll_collection.find({}).sort("created_at", -1))
     return polls
 
-@app.put("/polls/{poll_id}/activate", status_code=status.HTTP_200_OK)
-async def activate_poll(poll_id: str):
+@app.put("/polls/{poll_id}/activate", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin_user)])
+async def activate_poll(poll_id: str, current_user: TokenData = Depends(require_admin_user)):
     if not ObjectId.is_valid(poll_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
     
@@ -176,8 +159,8 @@ async def activate_poll(poll_id: str):
     
     return {"message": "Poll activated, but could not fetch details to initialize votes."}
 
-@app.delete("/polls/{poll_id}", status_code=status.HTTP_200_OK)
-async def delete_poll_by_id(poll_id: str):
+@app.delete("/polls/{poll_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin_user)])
+async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(require_admin_user)):
     if not ObjectId.is_valid(poll_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
 
@@ -198,15 +181,17 @@ async def delete_poll_by_id(poll_id: str):
 
     return {"message": f"Poll '{poll_to_delete.get('question')}' deleted successfully"}
 
+# --- Public/User Endpoints ---
 @app.get("/polls/active")
 async def get_active_poll_details():
+    # This endpoint can remain public if users need to see the poll before voting
     active_poll = poll_collection.find_one({"is_active": True}, {"_id": 0, "is_active": 0, "created_at": 0})
     if not active_poll:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active poll found.")
     return active_poll
 
-@app.post("/vote")
-def cast_vote(option_voted: str = Query(..., alias="option")):
+@app.post("/vote", dependencies=[Depends(get_current_user_token_data)]) # Requires any authenticated user
+def cast_vote(option_voted: str = Query(..., alias="option"), current_user: TokenData = Depends(get_current_user_token_data)):
     active_poll = poll_collection.find_one({"is_active": True})
     if not active_poll:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active poll to vote on.")
@@ -215,6 +200,8 @@ def cast_vote(option_voted: str = Query(..., alias="option")):
     if option_voted not in poll_options:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid option. Valid options are: {', '.join(poll_options)}")
 
+    # Optional: You could add logic here to prevent a user (current_user.sub or current_user.id)
+    # from voting multiple times on the same poll if desired.
     r.incr(f"vote:{option_voted}")
 
     current_votes_snapshot = {opt: int(r.get(f"vote:{opt}") or 0) for opt in poll_options}
@@ -222,6 +209,10 @@ def cast_vote(option_voted: str = Query(..., alias="option")):
     current_votes_snapshot["_timestamp"] = datetime.utcnow()
     results_collection.insert_one(current_votes_snapshot)
     return {"message": f"Vote for {option_voted} recorded."}
+
+@app.get("/health") # Health check endpoint
+async def health_check():
+    return {"status": "healthy"}
 
 app.add_middleware(
     CORSMiddleware,

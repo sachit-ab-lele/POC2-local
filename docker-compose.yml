@@ -13,6 +13,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - MONGO_HOST=mongo
+      - JWT_SECRET=yoursupersecretkey # Add this, ensure it matches auth-api
     depends_on:
       - redis
       - mongo

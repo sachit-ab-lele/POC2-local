@@ -31,15 +31,26 @@
     <script>
         let currentPollOptions = [];
         async function vote(candidateName) {
+            const token = localStorage.getItem('accessToken');
+            if (!token) {
+                alert("Authentication required. Please log in to vote.");
+                window.location.href = "/index.html"; // Redirect to login page
+                return;
+            }
+
             const errorMessageElement = document.getElementById("results");
             try {
+                // vote-api is on port 8000 as per docker-compose
                 const response = await fetch(`http://localhost:8000/vote?option=${encodeURIComponent(candidateName)}`, {
-                    method: "POST"
+                    method: "POST",
+                    headers: {
+                        'Authorization': `Bearer ${token}` // Add JWT token
+                    }
                 });
 
                 if (response.ok) {
                     console.log(`Vote for ${candidateName} successfully cast!`);
-                    fetchResults();
+                    fetchAndDisplayResults(); // Refresh results after voting
                 } else {
                     const errorData = await response.json();
                     const detail = errorData.detail || 'Unknown error during vote.';
@@ -55,6 +66,7 @@
         async function fetchAndDisplayResults() {
             const resultsElement = document.getElementById("results");
             try {
+                // result-api is on port 8001 as per docker-compose
                 const response = await fetch('http://localhost:8001/results');
                 if (response.ok) {
                     const data = await response.json();
@@ -87,6 +99,7 @@
             const pollQuestionTitle = document.getElementById('pollQuestionTitle');
             const voteButtonsContainer = document.getElementById('voteButtonsContainer');
             try {
+                // vote-api is on port 8000
                 const response = await fetch('http://localhost:8000/polls/active');
                 if (!response.ok) {
                     pollQuestionTitle.textContent = 'No Active Poll';
