@@ -55,6 +55,7 @@ services:
       - "33060:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d # Add this line
 
   auth-api: # Handles authentication and token generation
     build: ./auth-api # You will need to create this service
