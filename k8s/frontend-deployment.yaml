@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: voting-app
   labels:
     app: frontend
 spec:
@@ -16,8 +17,13 @@ spec:
     spec:
       containers:
       - name: frontend
-        # Replace with your actual frontend image
-        # This image should have your static files (from ./frontend) served by Nginx
-        image: nginx:alpine # Or your custom image: your-repo/frontend-app:latest
+        image: sachitlele/voteapp-frontend:latest # Your frontend image from Docker Hub
         ports:
         - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"

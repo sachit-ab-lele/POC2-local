@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-api
+  namespace: voting-app
+  labels:
+    app: auth-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-api
+  template:
+    metadata:
+      labels:
+        app: auth-api
+    spec:
+      containers:
+      - name: auth-api
+        image: sachitlele/voteapp-auth-api:latest # YOUR ACTUAL IMAGE
+        ports:
+        - containerPort: 8000 # Assuming it listens on 8000 internally
+        env:
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_USER
+          value: "voteuser" # From mysql-secret via MYSQL_USER in StatefulSet
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret # Use the consistent secret name
+              key: MYSQL_PASSWORD
+        - name: DB_NAME
+          value: "votelogin_db" # From MYSQL_DATABASE in StatefulSet
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets # From 06-app-secrets.yaml
+              key: JWT_SECRET
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"

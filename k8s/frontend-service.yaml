@@ -2,12 +2,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: frontend
+  namespace: voting-app
+  labels:
+    app: frontend
 spec:
   selector:
     app: frontend
   ports:
   - protocol: TCP
-    port: 80            # Port other services might use (if any) or internal LB port
-    targetPort: 80      # Port the Nginx container is listening on
-    nodePort: 30080     # Exposes on NodeIP:30080 (similar to 8080:80)
+    port: 80            
+    targetPort: 80     
   type: NodePort        

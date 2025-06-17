@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: result-api
+  namespace: voting-app
   labels:
     app: result-api
 spec:
@@ -16,7 +17,7 @@ spec:
     spec:
       containers:
       - name: result-api
-        image: your-repo/result-api:latest # Replace with your actual image
+        image: sachitlele/voteapp-result-api:latest # YOUR ACTUAL IMAGE
         ports:
         - containerPort: 8000 # Internal port the app listens on
         env:
@@ -24,25 +25,9 @@ spec:
           value: "redis"
         - name: MONGO_HOST
           value: "mongo"
-        - name: MYSQL_HOST
-          value: "mysql" # Kubernetes service name for MySQL
-        - name: MYSQL_USER
-          valueFrom:
-            secretKeyRef:
-              name: mysql-creds
-              key: mysql-user
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-creds
-              key: mysql-password
-        - name: MYSQL_DB_NAME # Or whatever your app expects for the database name
-          valueFrom:
-            secretKeyRef:
-              name: mysql-creds
-              key: mysql-database
         - name: ADMIN_EMAIL
           value: "lelesachit@gmail.com"
+        # Consider moving ADMIN_EMAIL to a ConfigMap if it changes per environment
         resources: # It's good practice to add these!
           requests:
             memory: "128Mi"
