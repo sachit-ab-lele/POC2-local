@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo # Changed to 'mongo' to match StatefulSet serviceName
+  namespace: voting-app # Changed to 'voting-app'
+  labels:
+    app: mongo # Added label for consistency
+spec:
+  selector:
+    app: mongo # Changed to match StatefulSet pod labels
+  ports:
+  - port: 27017
+    targetPort: 27017
+  # type: ClusterIP # This is the default if not specified
+  clusterIP: None # Make it a headless service for the StatefulSet

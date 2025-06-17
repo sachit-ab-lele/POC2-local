@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: redis-binding
+  namespace: voting-app
+  labels:
+    app: redis 
+subjects:
+- kind: ServiceAccount
+  name: redis-sa
+  namespace: voting-app 
+roleRef:
+  kind: Role
+  name: redis-role
+  apiGroup: rbac.authorization.k8s.io

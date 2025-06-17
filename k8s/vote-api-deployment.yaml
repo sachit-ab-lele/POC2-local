@@ -2,10 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vote-api
+  namespace: voting-app
   labels:
     app: vote-api
 spec:
-  replicas: 1 # Adjust as needed
+  replicas: 1 
   selector:
     matchLabels:
       app: vote-api
@@ -16,32 +17,20 @@ spec:
     spec:
       containers:
       - name: vote-api
-        image: your-repo/vote-api:latest # Replace with your actual image
+        image: sachitlele/voteapp-vote-api:latest 
         ports:
         - containerPort: 8000
         env:
         - name: REDIS_HOST
-          value: "redis" # Kubernetes service name for Redis
+          value: "redis" 
         - name: MONGO_HOST
-          value: "mongo" # Kubernetes service name for Mongo
-        - name: MYSQL_HOST
-          value: "mysql" # Kubernetes service name for MySQL
-        - name: MYSQL_USER
+          value: "mongo" 
+        - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: mysql-creds
-              key: mysql-user
-        - name: MYSQL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mysql-creds
-              key: mysql-password
-        - name: MYSQL_DB_NAME # Or whatever your app expects for the database name
-          valueFrom:
-            secretKeyRef:
-              name: mysql-creds
-              key: mysql-database
-        # It's good practice to add resource requests and limits
+              name: app-secrets # From 06-app-secrets.yaml
+              key: JWT_SECRET
+        
         resources:
           requests:
             memory: "128Mi"

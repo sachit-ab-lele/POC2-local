@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: non-backend-test
+  labels:
+    role: frontend   
+spec:
+  containers:
+  - name: tester
+    image: bitnami/minideb
+    command: ["sleep", "3600"]
+

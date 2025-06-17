@@ -11,7 +11,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - MONGO_HOST=mongo
-      - JWT_SECRET=yoursupersecretkey # Add this, ensure it matches auth-api
+      - JWT_SECRET=yoursupersecretkey 
     depends_on:
       - redis
       - mongo
@@ -23,7 +23,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - MONGO_HOST=mongo
-      - ADMIN_EMAIL=lelesachit@gmail.com # Add this line
+      - ADMIN_EMAIL=lelesachit@gmail.com
     depends_on:
       - redis
       - mongo
@@ -39,7 +39,7 @@ services:
     image: mongo
     ports:
       - "27018:27017"
-    volumes: # Optional: persist mongo data
+    volumes: 
       - mongo_data:/data/db
 
   mysql:

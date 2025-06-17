@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo # Changed for consistency
+  namespace: voting-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo # Changed for consistency
+  serviceName: "mongo" # Changed for consistency with service name
+  template:
+    metadata:
+      labels:
+        app: mongo # Changed for consistency
+    spec:
+      serviceAccountName: mongo-sa
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+      containers:
+      - name: mongo # Changed for consistency
+        image: shreyasr03/custom-mongo:v1
+        ports:
+        - containerPort: 27017
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /data/db
+  volumeClaimTemplates: 
+  - metadata:
+      name: mongo-data 
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi 

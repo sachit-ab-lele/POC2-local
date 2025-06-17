@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mongo-rolebinding 
+  namespace: voting-app 
+  labels:
+    app: mongo # Added label for consistency
+subjects:
+- kind: ServiceAccount
+  name: mongo-sa
+  namespace: voting-app 
+roleRef:
+  kind: Role
+  name: mongo-role
+  apiGroup: rbac.authorization.k8s.io
