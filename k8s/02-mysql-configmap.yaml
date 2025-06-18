@@ -18,3 +18,7 @@ data:
 
     INSERT INTO users (username, password, role) VALUES ('testuser', 'userpass123', 'user') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);
     INSERT INTO users (username, password, role) VALUES ('admin01', 'adminpass123', 'admin') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);
+    INSERT INTO users (username, password, role) VALUES ('sachit', 'sachitpass', 'user') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);
+    INSERT INTO users (username, password, role) VALUES ('shreyas', 'shreyaspass', 'user') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);
+    INSERT INTO users (username, password, role) VALUES ('umed', 'umedpass', 'user') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);
+    INSERT INTO users (username, password, role) VALUES ('saahil', 'saahilpass', 'user') ON DUPLICATE KEY UPDATE password=VALUES(password), role=VALUES(role);

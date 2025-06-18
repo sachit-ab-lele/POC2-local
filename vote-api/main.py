@@ -68,6 +68,7 @@ r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, decode_respons
 client = MongoClient(os.getenv("MONGO_HOST", "mongo"), 27017)
 db = client.voting
 poll_collection = db.polls
+user_votes_collection = db.user_votes # New collection to track votes per user
 results_collection = db.results
 
 class PollInDB(PollBase):
@@ -129,14 +130,10 @@ async def activate_poll(poll_id: str, current_user: TokenData = Depends(require_
     if not ObjectId.is_valid(poll_id):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
     
-    object_id_to_activate = ObjectId(poll_id)
+    object_id_to_activate = ObjectId(poll_id)    
 
-    currently_active_poll = poll_collection.find_one({"is_active": True})
-    if currently_active_poll:
-        for option in currently_active_poll.get("options", []):
-            r.delete(f"vote:{option}")
-
-    poll_collection.update_many({}, {"$set": {"is_active": False}})
+    # No longer deactivating all other polls.
+    # poll_collection.update_many({}, {"$set": {"is_active": False}})
     
     update_result: UpdateResult = poll_collection.update_one(
         {"_id": object_id_to_activate},
@@ -149,15 +146,39 @@ async def activate_poll(poll_id: str, current_user: TokenData = Depends(require_
     newly_active_poll = poll_collection.find_one({"_id": object_id_to_activate})
     if newly_active_poll:
         for option in newly_active_poll.get("options", []):
-            r.set(f"vote:{option}", 0)
+            # Use poll-specific Redis keys
+            r.set(f"vote:{str(object_id_to_activate)}:{option}", 0)
         
         initial_snapshot = {opt: 0 for opt in newly_active_poll.get("options", [])}
         initial_snapshot["_poll_question"] = newly_active_poll.get("question")
+        initial_snapshot["_poll_id"] = str(object_id_to_activate) # Add poll_id to results
         initial_snapshot["_timestamp"] = datetime.utcnow()
         results_collection.insert_one(initial_snapshot)
         return {"message": f"Poll '{newly_active_poll.get('question')}' activated successfully."}
     
     return {"message": "Poll activated, but could not fetch details to initialize votes."}
+
+@app.put("/polls/{poll_id}/deactivate", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin_user)])
+async def deactivate_poll(poll_id: str, current_user: TokenData = Depends(require_admin_user)):
+    if not ObjectId.is_valid(poll_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
+    
+    object_id_to_deactivate = ObjectId(poll_id)
+
+    update_result: UpdateResult = poll_collection.update_one(
+        {"_id": object_id_to_deactivate},
+        {"$set": {"is_active": False}}
+    )
+
+    if update_result.matched_count == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found")
+
+    # Optionally, clear Redis votes for this poll upon deactivation
+    # poll_to_clear = poll_collection.find_one({"_id": object_id_to_deactivate})
+    # if poll_to_clear:
+    #     for option in poll_to_clear.get("options", []):
+    #         r.delete(f"vote:{str(object_id_to_deactivate)}:{option}")
+    return {"message": f"Poll with ID {poll_id} deactivated successfully."}
 
 @app.delete("/polls/{poll_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin_user)])
 async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(require_admin_user)):
@@ -172,7 +193,8 @@ async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(requ
 
     if poll_to_delete.get("is_active"):
         for option in poll_to_delete.get("options", []):
-            r.delete(f"vote:{option}")
+            # Use poll-specific Redis keys
+            r.delete(f"vote:{str(object_id_to_delete)}:{option}")
 
     delete_result: DeleteResult = poll_collection.delete_one({"_id": object_id_to_delete})
     
@@ -180,34 +202,54 @@ async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(requ
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found during delete operation")
 
     return {"message": f"Poll '{poll_to_delete.get('question')}' deleted successfully"}
+    # Also clear user_votes for the deleted poll
+    user_votes_collection.delete_many({"poll_id": object_id_to_delete})
 
 # --- Public/User Endpoints ---
-@app.get("/polls/active")
-async def get_active_poll_details():
-    # This endpoint can remain public if users need to see the poll before voting
-    active_poll = poll_collection.find_one({"is_active": True}, {"_id": 0, "is_active": 0, "created_at": 0})
-    if not active_poll:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active poll found.")
-    return active_poll
+@app.get("/polls/active", response_model=List[PollInDB]) # Returns a list of active polls
+async def get_active_polls():
+    active_polls = list(poll_collection.find({"is_active": True}).sort("created_at", -1))
+    if not active_polls:
+        # Return empty list if no active polls, or raise 404 if that's preferred
+        return [] 
+    return active_polls
 
-@app.post("/vote", dependencies=[Depends(get_current_user_token_data)]) # Requires any authenticated user
-def cast_vote(option_voted: str = Query(..., alias="option"), current_user: TokenData = Depends(get_current_user_token_data)):
-    active_poll = poll_collection.find_one({"is_active": True})
-    if not active_poll:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active poll to vote on.")
+@app.post("/vote", dependencies=[Depends(get_current_user_token_data)])
+def cast_vote(
+    poll_id: str = Query(..., description="The ID of the poll to vote on"),
+    option_voted: str = Query(..., alias="option", description="The option being voted for"),
+    current_user: TokenData = Depends(get_current_user_token_data)
+):
+    if not ObjectId.is_valid(poll_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
     
-    poll_options = active_poll.get("options", [])
+    target_poll_id = ObjectId(poll_id)
+    poll_to_vote_on = poll_collection.find_one({"_id": target_poll_id, "is_active": True})
+
+    if not poll_to_vote_on:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active poll with the given ID not found or is not active.")
+    
+    user_id = current_user.id 
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User identifier not found in token.")
+
+    # Check if the user has already voted for this poll
+    existing_vote = user_votes_collection.find_one({"user_id": user_id, "poll_id": target_poll_id})
+    if existing_vote:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You have already voted in this poll.")
+
+    poll_options = poll_to_vote_on.get("options", [])
     if option_voted not in poll_options:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid option. Valid options are: {', '.join(poll_options)}")
 
-    # Optional: You could add logic here to prevent a user (current_user.sub or current_user.id)
-    # from voting multiple times on the same poll if desired.
-    r.incr(f"vote:{option_voted}")
+    r.incr(f"vote:{str(target_poll_id)}:{option_voted}") # Poll-specific Redis key
 
-    current_votes_snapshot = {opt: int(r.get(f"vote:{opt}") or 0) for opt in poll_options}
-    current_votes_snapshot["_poll_question"] = active_poll.get("question")
-    current_votes_snapshot["_timestamp"] = datetime.utcnow()
-    results_collection.insert_one(current_votes_snapshot)
+    user_votes_collection.insert_one({
+        "user_id": user_id,
+        "poll_id": target_poll_id,
+        "option_voted": option_voted,
+        "timestamp": datetime.utcnow()
+    })
     return {"message": f"Vote for {option_voted} recorded."}
 
 @app.get("/health") # Health check endpoint
