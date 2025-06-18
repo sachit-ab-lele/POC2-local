@@ -17,66 +17,70 @@
     </style>
 </head>
 <body>
-    <h1 id="pollQuestionTitle" class="text-4xl text-gray-800 mb-8 text-center">Loading Poll...</h1>
+    <h1 class="text-4xl text-gray-800 mb-8 text-center">Active Polls</h1>
 
-    <div id="voteButtonsContainer" class="flex flex-wrap justify-center space-x-4 mb-12">
+    <div id="pollsContainer" class="w-full max-w-2xl space-y-8">
+        <!-- Polls will be dynamically inserted here -->
     </div>
 
-    <h2 class="text-3xl text-gray-700 mb-4">Live Results</h2>
-    <pre id="results"
-         class="bg-white p-6 rounded-lg shadow-lg border border-gray-200 text-gray-800 text-lg font-mono min-w-min w-1/2 text-left overflow-auto">
-        Loading results...
-    </pre>
-
     <script>
-        let currentPollOptions = [];
-        async function vote(candidateName) {
+        // Store active poll data { pollId: string, options: string[] }
+        let activePollsData = {};
+
+        async function vote(pollId, candidateName) {
             const token = localStorage.getItem('accessToken');
             if (!token) {
                 alert("Authentication required. Please log in to vote.");
                 window.location.href = "/index.html"; // Redirect to login page
                 return;
             }
-
-            const errorMessageElement = document.getElementById("results");
+            const resultsElement = document.getElementById(`results-${pollId}`);
             try {
                 // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
                 // and 30000 with the NodePort of your vote-api service.
-                // Example: `http://10.25.156.40:30000/vote?option=${encodeURIComponent(candidateName)}`
-                const response = await fetch(`http://10.25.156.40:30000/vote?option=${encodeURIComponent(candidateName)}`, {
+                const response = await fetch(`http://10.25.156.40:30000/vote?poll_id=${pollId}&option=${encodeURIComponent(candidateName)}`, {
                     method: "POST",
                     headers: {
                         'Authorization': `Bearer ${token}` // Add JWT token
                     }
                 });
-
                 if (response.ok) {
                     console.log(`Vote for ${candidateName} successfully cast!`);
-                    fetchAndDisplayResults(); // Refresh results after voting
+                    fetchAndDisplayResults(pollId); // Refresh results for this poll
                 } else {
                     const errorData = await response.json();
                     const detail = errorData.detail || 'Unknown error during vote.';
                     console.error('Error casting vote:', detail);
-                    errorMessageElement.innerText = `Error casting vote: ${detail}`;
+                    if(resultsElement) resultsElement.innerText = `Error casting vote: ${detail}`;
                 }
             } catch (error) {
                 console.error('Network error during vote:', error);
-                errorMessageElement.innerText = 'A network error occurred while voting. Please check your connection.';
+                if(resultsElement) resultsElement.innerText = 'A network error occurred while voting. Please check your connection.';
             }
         }
 
-        async function fetchAndDisplayResults() {
-            const resultsElement = document.getElementById("results");
+        async function fetchAndDisplayResults(pollId) {
+            const resultsElement = document.getElementById(`results-${pollId}`);
+            if (!resultsElement) {
+                console.warn(`Results element for pollId ${pollId} not found.`);
+                return;
+            }
+
+            const pollData = activePollsData[pollId];
+            if (!pollData || !pollData.options) {
+                resultsElement.innerText = "Poll data not fully loaded.";
+                return;
+            }
+
             try {
                 // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
                 // and 30001 with the NodePort of your result-api service.
-                // Example: `http://10.25.156.40:30001/results`
-                const response = await fetch('http://10.25.156.40:30001/results');
+                const response = await fetch(`http://10.25.156.40:30001/results?poll_id=${pollId}`);
                 if (response.ok) {
                     const data = await response.json();
                     let resultsText = "";
-                    if (currentPollOptions.length > 0) {
-                        currentPollOptions.forEach(option => {
+                    if (pollData.options.length > 0) {
+                        pollData.options.forEach(option => {
                             resultsText += `${option}: ${data[option] !== undefined ? data[option] : "0"}\n`;
                         });
                     } else if (Object.keys(data).length > 0 && !data.error) {
@@ -86,53 +90,89 @@
                             }
                         });
                     } else {
-                        resultsText = "No results available or poll not fully loaded.";
+                        resultsText = "No results available yet.";
                     }
                     resultsElement.innerText = resultsText.trim() || "Waiting for votes...";
                 } else {
                     console.error('Failed to fetch results:', response.status, response.statusText);
-                    resultsElement.innerText = "Failed to load results. Poll might have been deleted or API is down.";
+                    resultsElement.innerText = `Failed to load results (${response.status}).`;
                 }
             } catch (error) {
                 console.error('Network error fetching results:', error);
-                resultsElement.innerText = "Error fetching results. API might be down.";
+                resultsElement.innerText = "Network error fetching results.";
             }
         }
 
-        async function loadActivePoll() {
-            const pollQuestionTitle = document.getElementById('pollQuestionTitle');
-            const voteButtonsContainer = document.getElementById('voteButtonsContainer');
+        async function loadActivePolls() {
+            const pollsContainer = document.getElementById('pollsContainer');
+            pollsContainer.innerHTML = '<p class="text-center text-gray-600">Loading active polls...</p>';
+            activePollsData = {}; // Reset
+
             try {
                 // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
                 // and 30000 with the NodePort of your vote-api service.
                 // Example: `http://10.25.156.40:30000/polls/active`
                 const response = await fetch('http://10.25.156.40:30000/polls/active');
                 if (!response.ok) {
-                    pollQuestionTitle.textContent = 'No Active Poll';
-                    voteButtonsContainer.innerHTML = '<p class="text-gray-600">There is no active poll to vote on currently.</p>';
-                    document.getElementById("results").innerText = "No active poll.";
+                    pollsContainer.innerHTML = '<p class="text-center text-gray-600">Could not load polls or no active polls available.</p>';
                     return;
                 }
-                const poll = await response.json();
-                pollQuestionTitle.textContent = poll.question;
-                currentPollOptions = poll.options;
-                voteButtonsContainer.innerHTML = '';
-                poll.options.forEach(option => {
-                    const button = document.createElement('button');
-                    button.textContent = `Vote for ${option}`;
-                    button.className = 'bg-indigo-600 text-white py-3 px-8 rounded-lg shadow-md hover:bg-indigo-700 transition duration-300 ease-in-out text-xl font-semibold mb-2';
-                    button.onclick = () => vote(option);
-                    voteButtonsContainer.appendChild(button);
+                const polls = await response.json();
+
+                if (!polls || polls.length === 0) {
+                    pollsContainer.innerHTML = '<p class="text-center text-gray-600">There are no active polls currently.</p>';
+                    return;
+                }
+
+                pollsContainer.innerHTML = ''; // Clear loading message
+
+                polls.forEach(poll => {
+                    activePollsData[poll._id] = { options: poll.options, question: poll.question };
+
+                    const pollCard = document.createElement('div');
+                    pollCard.className = 'poll-card bg-white p-6 rounded-lg shadow-md border border-gray-200';
+
+                    const questionTitle = document.createElement('h2');
+                    questionTitle.textContent = poll.question;
+                    questionTitle.className = 'text-2xl text-gray-800 mb-4 text-center font-semibold';
+                    pollCard.appendChild(questionTitle);
+
+                    const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'flex flex-wrap justify-center gap-4 mb-6';
+                    poll.options.forEach(option => {
+                        const button = document.createElement('button');
+                        button.textContent = `Vote for ${option}`;
+                        button.className = 'bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 transition duration-300 ease-in-out text-lg';
+                        button.onclick = () => vote(poll._id, option);
+                        buttonsDiv.appendChild(button);
+                    });
+                    pollCard.appendChild(buttonsDiv);
+
+                    const resultsTitle = document.createElement('h3');
+                    resultsTitle.textContent = 'Live Results';
+                    resultsTitle.className = 'text-xl text-gray-700 mb-2 text-center';
+                    pollCard.appendChild(resultsTitle);
+
+                    const resultsPre = document.createElement('pre');
+                    resultsPre.id = `results-${poll._id}`;
+                    resultsPre.className = 'bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-700 text-md font-mono text-left overflow-auto min-h-[50px]';
+                    resultsPre.textContent = 'Loading results...';
+                    pollCard.appendChild(resultsPre);
+
+                    pollsContainer.appendChild(pollCard);
+                    fetchAndDisplayResults(poll._id); // Initial fetch for this poll
                 });
-                fetchAndDisplayResults();
             } catch (error) {
-                pollQuestionTitle.textContent = 'Error Loading Poll';
+                pollsContainer.innerHTML = '<p class="text-center text-red-500">Error loading polls. Please try again later.</p>';
                 console.error('Error fetching active poll:', error);
-                document.getElementById("results").innerText = "Could not load poll information.";
             }
         }
-        loadActivePoll();
-        setInterval(fetchAndDisplayResults, 2000);
+        loadActivePolls();
+        setInterval(() => {
+            Object.keys(activePollsData).forEach(pollId => {
+                fetchAndDisplayResults(pollId);
+            });
+        }, 3000); // Refresh results for all active polls every 3 seconds
     </script>
 </body>
 </html>

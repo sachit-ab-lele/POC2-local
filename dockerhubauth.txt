@@ -1,6 +1,5 @@
 kubectl create secret docker-registry my-docker-hub-credentials \
-  --docker-server=https://index.docker.io/v1/ \
   --docker-username=sachitlele \
-  --docker-password=Avenue311 \
+  --docker-password=Bitchpls311@ \
   --docker-email=lelesachit@gmail.com \
   -n voting-app
