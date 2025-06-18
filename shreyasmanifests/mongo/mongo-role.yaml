@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: mongo-role
-  namespace: voting-app # Changed to 'voting-app'
+  namespace: voting-app 
   labels:
-    app: mongo # Added label for consistency
+    app: mongo 
 rules: []
