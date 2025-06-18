@@ -13,6 +13,8 @@ spec:
       labels:
         app: redis
     spec:
+      nodeSelector: 
+        workload-type: database 
       serviceAccountName: redis-sa
       securityContext:
         runAsUser: 1000

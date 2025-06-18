@@ -53,7 +53,9 @@
     </div>
 
     <script>
-        const VOTE_API_BASE_URL = 'http://localhost:8000'; // vote-api port
+        // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
+        // and 30000 with the NodePort of your vote-api service.
+        const VOTE_API_BASE_URL = 'http://10.25.156.40:30000'; // Example: 'http://10.25.156.40:30000'
         const messageArea = document.getElementById('messageArea');
 
         function displayMessage(message, isError = false) {

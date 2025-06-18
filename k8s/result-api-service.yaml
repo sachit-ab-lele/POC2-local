@@ -10,7 +10,7 @@ spec:
     app: result-api
   ports:
   - protocol: TCP
-    port: 8000        # Internal port for the service
-    targetPort: 8000  # Container port
-    nodePort: 30001   # Exposes on NodeIP:30001 (similar to 8001:8000)
+    port: 8000        
+    targetPort: 8000  
+    nodePort: 30001   
   type: NodePort

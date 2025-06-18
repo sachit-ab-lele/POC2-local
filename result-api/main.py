@@ -31,9 +31,16 @@ def get_results():
     
     return vote_counts
 
+origins = [
+    "http://10.25.156.34:31340", 
+    "http://10.25.156.39:31340", 
+    "http://10.25.156.40:31340", 
+    "http://localhost:8080",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

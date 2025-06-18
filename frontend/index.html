@@ -47,8 +47,10 @@
             errorMessageElement.style.display = "none";
 
             try {
-                // auth-api is exposed on port 8002 by docker-compose
-                const response = await fetch('http://localhost:8002/login', {
+                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
+                // and 30665 with the NodePort of your auth-api service.
+                // Example: 'http://10.25.156.40:30665/login'
+                const response = await fetch('http://10.25.156.40:30665/login', { 
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

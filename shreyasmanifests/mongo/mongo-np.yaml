@@ -5,8 +5,8 @@ metadata:
   namespace: voting-app # Changed to voting-app
 spec:
   podSelector:
-    matchLabels: # This should match the labels of your MongoDB pods
-      app: mongo # Assuming MongoDB pods are labeled 'app: mongo'
+    matchLabels: 
+      app: mongo 
   policyTypes:
   - Ingress
   ingress:

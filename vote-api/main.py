@@ -214,9 +214,16 @@ def cast_vote(option_voted: str = Query(..., alias="option"), current_user: Toke
 async def health_check():
     return {"status": "healthy"}
 
+origins = [
+    "http://10.25.156.34:31340", # The origin of your frontend
+    "http://10.25.156.39:31340", # Add other node IPs if you access frontend via them
+    "http://10.25.156.40:31340", 
+    "http://localhost:8080",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -6,7 +6,7 @@ metadata:
   labels:
     app: result-api
 spec:
-  replicas: 1 # Adjust as needed
+  replicas: 3 
   selector:
     matchLabels:
       app: result-api
@@ -17,9 +17,9 @@ spec:
     spec:
       containers:
       - name: result-api
-        image: sachitlele/voteapp-result-api:latest # YOUR ACTUAL IMAGE
+        image: sachitlele/voteapp-result-api:latest 
         ports:
-        - containerPort: 8000 # Internal port the app listens on
+        - containerPort: 8000 
         env:
         - name: REDIS_HOST
           value: "redis"
@@ -27,8 +27,7 @@ spec:
           value: "mongo"
         - name: ADMIN_EMAIL
           value: "lelesachit@gmail.com"
-        # Consider moving ADMIN_EMAIL to a ConfigMap if it changes per environment
-        resources: # It's good practice to add these!
+        resources:
           requests:
             memory: "128Mi"
             cpu: "250m"

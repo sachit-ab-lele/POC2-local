@@ -40,8 +40,10 @@
 
             const errorMessageElement = document.getElementById("results");
             try {
-                // vote-api is on port 8000 as per docker-compose
-                const response = await fetch(`http://localhost:8000/vote?option=${encodeURIComponent(candidateName)}`, {
+                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
+                // and 30000 with the NodePort of your vote-api service.
+                // Example: `http://10.25.156.40:30000/vote?option=${encodeURIComponent(candidateName)}`
+                const response = await fetch(`http://10.25.156.40:30000/vote?option=${encodeURIComponent(candidateName)}`, {
                     method: "POST",
                     headers: {
                         'Authorization': `Bearer ${token}` // Add JWT token
@@ -66,8 +68,10 @@
         async function fetchAndDisplayResults() {
             const resultsElement = document.getElementById("results");
             try {
-                // result-api is on port 8001 as per docker-compose
-                const response = await fetch('http://localhost:8001/results');
+                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
+                // and 30001 with the NodePort of your result-api service.
+                // Example: `http://10.25.156.40:30001/results`
+                const response = await fetch('http://10.25.156.40:30001/results');
                 if (response.ok) {
                     const data = await response.json();
                     let resultsText = "";
@@ -99,8 +103,10 @@
             const pollQuestionTitle = document.getElementById('pollQuestionTitle');
             const voteButtonsContainer = document.getElementById('voteButtonsContainer');
             try {
-                // vote-api is on port 8000
-                const response = await fetch('http://localhost:8000/polls/active');
+                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
+                // and 30000 with the NodePort of your vote-api service.
+                // Example: `http://10.25.156.40:30000/polls/active`
+                const response = await fetch('http://10.25.156.40:30000/polls/active');
                 if (!response.ok) {
                     pollQuestionTitle.textContent = 'No Active Poll';
                     voteButtonsContainer.innerHTML = '<p class="text-gray-600">There is no active poll to vote on currently.</p>';

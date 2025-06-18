@@ -1,26 +1,28 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mongo # Changed for consistency
+  name: mongo 
   namespace: voting-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mongo # Changed for consistency
-  serviceName: "mongo" # Changed for consistency with service name
+      app: mongo 
+  serviceName: "mongo" 
   template:
     metadata:
       labels:
-        app: mongo # Changed for consistency
+        app: mongo 
     spec:
+      nodeSelector: 
+        workload-type: database 
       serviceAccountName: mongo-sa
       securityContext:
         runAsUser: 1001
         runAsGroup: 1001
         fsGroup: 1001
       containers:
-      - name: mongo # Changed for consistency
+      - name: mongo 
         image: shreyasr03/custom-mongo:v1
         ports:
         - containerPort: 27017

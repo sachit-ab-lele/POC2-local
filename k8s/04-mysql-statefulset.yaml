@@ -9,15 +9,15 @@ spec:
   selector:
     matchLabels:
       app: mysql
-  serviceName: "mysql" # Headless service for stable network identifiers
+  serviceName: "mysql" 
   replicas: 1
   template:
     metadata:
       labels:
         app: mysql
-    spec:
+    spec: 
       nodeSelector:
-        workload-type: database # Ensures pods run on your labeled database node
+        workload-type: database 
       terminationGracePeriodSeconds: 10
       containers:
         - name: mysql
@@ -49,7 +49,7 @@ spec:
         - name: mysql-initdb
           configMap:
             name: mysql-init-scripts
-  volumeClaimTemplates: # Defines the PVC to be created for each pod
+  volumeClaimTemplates: 
     - metadata:
         name: mysql-persistent-storage
       spec:
