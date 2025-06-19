@@ -11,22 +11,19 @@ from pydantic import BaseModel, EmailStr
 from dotenv import load_dotenv
 
 load_dotenv()
-
-# --- Configuration ---
 DATABASE_HOST = os.environ.get("DB_HOST", "mysql")
 DATABASE_USER = os.environ.get("DB_USER", "voteuser")
 DATABASE_PASSWORD = os.environ.get("DB_PASSWORD", "votepassword")
 DATABASE_NAME = os.environ.get("DB_NAME", "votelogin_db")
 
-JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "yoursupersecretkey") # Change in production!
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "yoursupersecretkey")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 app = FastAPI()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # Not directly used for login, but good for protected routes
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") 
 
-# --- Database Connection ---
 def get_db_connection():
     try:
         conn = pymysql.connect(
@@ -38,14 +35,14 @@ def get_db_connection():
         )
         return conn
     except pymysql.MySQLError as e:
-        print(f"Database connection failed: {e}") # Replace with proper logging
+        print(f"Database connection failed: {e}") 
         raise HTTPException(status_code=500, detail="Database connection error")
 
 # --- Pydantic Models ---
 class UserLogin(BaseModel):
     username: str
     password: str
-    role: str # 'user' or 'admin'
+    role: str 
 
 class TokenData(BaseModel):
     username: Optional[str] = None
@@ -56,7 +53,6 @@ class Token(BaseModel):
     token_type: str
     role: str
 
-# --- Helper Functions ---
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -67,18 +63,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- API Endpoints ---
 @app.post("/login", response_model=Token)
 async def login_for_access_token(form_data: UserLogin):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # WARNING: Storing and comparing plain text passwords is INSECURE.
             sql = "SELECT id, username, password, role FROM users WHERE username = %s"
             cursor.execute(sql, (form_data.username,))
             user = cursor.fetchone()
 
-            # WARNING: Comparing plain text passwords is INSECURE.
             if not user or user['password'] != form_data.password:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -100,7 +93,7 @@ async def login_for_access_token(form_data: UserLogin):
             )
             return {"access_token": access_token, "token_type": "bearer", "role": user['role']}
     except pymysql.MySQLError as e:
-        print(f"Database query error: {e}") # Replace with proper logging
+        print(f"Database query error: {e}") 
         raise HTTPException(status_code=500, detail="Error processing login")
     finally:
         if conn:
@@ -114,6 +107,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
     allow_credentials=True,
-    allow_methods=["*"], # Allows all methods
-    allow_headers=["*"], # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"], 
 )

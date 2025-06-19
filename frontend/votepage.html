@@ -24,7 +24,6 @@
     </div>
 
     <script>
-        // Store active poll data { pollId: string, options: string[] }
         let activePollsData = {};
 
         async function vote(pollId, candidateName) {
@@ -36,12 +35,10 @@
             }
             const resultsElement = document.getElementById(`results-${pollId}`);
             try {
-                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
-                // and 30000 with the NodePort of your vote-api service.
                 const response = await fetch(`http://10.25.156.40:30000/vote?poll_id=${pollId}&option=${encodeURIComponent(candidateName)}`, {
                     method: "POST",
                     headers: {
-                        'Authorization': `Bearer ${token}` // Add JWT token
+                        'Authorization': `Bearer ${token}`
                     }
                 });
                 if (response.ok) {
@@ -73,8 +70,6 @@
             }
 
             try {
-                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
-                // and 30001 with the NodePort of your result-api service.
                 const response = await fetch(`http://10.25.156.40:30001/results?poll_id=${pollId}`);
                 if (response.ok) {
                     const data = await response.json();
@@ -85,7 +80,7 @@
                         });
                     } else if (Object.keys(data).length > 0 && !data.error) {
                          Object.entries(data).forEach(([key, value]) => {
-                            if (!key.startsWith('_')) { // Exclude metadata like _poll_question
+                            if (!key.startsWith('_')) {
                                 resultsText += `${key}: ${value}\n`;
                             }
                         });
@@ -106,12 +101,8 @@
         async function loadActivePolls() {
             const pollsContainer = document.getElementById('pollsContainer');
             pollsContainer.innerHTML = '<p class="text-center text-gray-600">Loading active polls...</p>';
-            activePollsData = {}; // Reset
-
+            activePollsData = {};
             try {
-                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
-                // and 30000 with the NodePort of your vote-api service.
-                // Example: `http://10.25.156.40:30000/polls/active`
                 const response = await fetch('http://10.25.156.40:30000/polls/active');
                 if (!response.ok) {
                     pollsContainer.innerHTML = '<p class="text-center text-gray-600">Could not load polls or no active polls available.</p>';
@@ -124,7 +115,7 @@
                     return;
                 }
 
-                pollsContainer.innerHTML = ''; // Clear loading message
+                pollsContainer.innerHTML = '';
 
                 polls.forEach(poll => {
                     activePollsData[poll._id] = { options: poll.options, question: poll.question };
@@ -160,7 +151,7 @@
                     pollCard.appendChild(resultsPre);
 
                     pollsContainer.appendChild(pollCard);
-                    fetchAndDisplayResults(poll._id); // Initial fetch for this poll
+                    fetchAndDisplayResults(poll._id);
                 });
             } catch (error) {
                 pollsContainer.innerHTML = '<p class="text-center text-red-500">Error loading polls. Please try again later.</p>';
@@ -172,7 +163,7 @@
             Object.keys(activePollsData).forEach(pollId => {
                 fetchAndDisplayResults(pollId);
             });
-        }, 3000); // Refresh results for all active polls every 3 seconds
+        }, 3000);
     </script>
 </body>
 </html>

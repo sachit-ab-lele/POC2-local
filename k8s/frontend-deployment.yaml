@@ -6,7 +6,7 @@ metadata:
   labels:
     app: frontend
 spec:
-  replicas: 3 # Adjust as needed
+  replicas: 3
   selector:
     matchLabels:
       app: frontend
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: sachitlele/voteapp-frontend:latest # Your frontend image from Docker Hub
+        image: sachitlele/voteapp-frontend:latest
         ports:
         - containerPort: 80
         resources:
