@@ -7,7 +7,7 @@ metadata:
     app: mysql
 spec:
   accessModes:
-    - ReadWriteOnce # Can be mounted as read-write by a single node
+    - ReadWriteOnce 
   resources:
     requests:
-      storage: 5Gi # Request 5 Gigabytes of storage
+      storage: 5Gi 

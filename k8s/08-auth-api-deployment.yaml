@@ -17,27 +17,27 @@ spec:
     spec:
       containers:
       - name: auth-api
-        image: sachitlele/voteapp-auth-api:latest # YOUR ACTUAL IMAGE
+        image: sachitlele/voteapp-auth-api:latest
         ports:
-        - containerPort: 8000 # Assuming it listens on 8000 internally
+        - containerPort: 8000
         env:
         - name: DB_HOST
           value: "mysql"
         - name: DB_PORT
           value: "3306"
         - name: DB_USER
-          value: "voteuser" # From mysql-secret via MYSQL_USER in StatefulSet
+          value: "voteuser"
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: mysql-secret # Use the consistent secret name
+              name: mysql-secret
               key: MYSQL_PASSWORD
         - name: DB_NAME
-          value: "votelogin_db" # From MYSQL_DATABASE in StatefulSet
+          value: "votelogin_db"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
-              name: app-secrets # From 06-app-secrets.yaml
+              name: app-secrets
               key: JWT_SECRET
         resources:
           requests:

@@ -11,4 +11,4 @@ spec:
       targetPort: 3306
   selector:
     app: mysql
-  clusterIP: None # Creates a headless service, used with StatefulSets
+  clusterIP: None 
