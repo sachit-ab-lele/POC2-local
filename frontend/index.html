@@ -47,9 +47,7 @@
             errorMessageElement.style.display = "none";
 
             try {
-                // Replace <YOUR_NODE_IP> with one of your Kubernetes worker node IPs
-                // and 30665 with the NodePort of your auth-api service.
-                // Example: 'http://10.25.156.40:30665/login'
+                
                 const response = await fetch('http://10.25.156.40:30665/login', { 
                     method: 'POST',
                     headers: {
@@ -58,14 +56,12 @@
                     body: JSON.stringify({ username, password, role })
                 });
 
-                const data = await response.json(); // Try to parse JSON regardless of status for error messages
+                const data = await response.json(); 
 
                 if (response.ok) {
-                    localStorage.setItem('accessToken', data.access_token); // Store the token
-                    localStorage.setItem('userRole', data.role); // Store role
-                    localStorage.setItem('username', username); // Optionally store username
-
-                    // alert(`Login successful! Token: ${data.access_token}`); // For debugging
+                    localStorage.setItem('accessToken', data.access_token); 
+                    localStorage.setItem('userRole', data.role); 
+                    localStorage.setItem('username', username); 
                     if (data.role === "admin") {
                         window.location.href = "/admin.html";
                     } else {

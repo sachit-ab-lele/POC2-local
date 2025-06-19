@@ -12,7 +12,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: calc(100vh - 40px); /* Adjust for margin */
+            min-height: calc(100vh - 40px); 
         } 
     </style>
 </head>
@@ -20,7 +20,6 @@
     <h1 class="text-4xl text-gray-800 mb-8 text-center">Active Polls</h1>
 
     <div id="pollsContainer" class="w-full max-w-2xl space-y-8">
-        <!-- Polls will be dynamically inserted here -->
     </div>
 
     <script>
@@ -30,7 +29,7 @@
             const token = localStorage.getItem('accessToken');
             if (!token) {
                 alert("Authentication required. Please log in to vote.");
-                window.location.href = "/index.html"; // Redirect to login page
+                window.location.href = "/index.html"; 
                 return;
             }
             const resultsElement = document.getElementById(`results-${pollId}`);
@@ -43,8 +42,7 @@
                 });
                 if (response.ok) {
                     console.log(`Vote for ${candidateName} successfully cast!`);
-                    fetchAndDisplayResults(pollId); // Refresh results for this poll
-                } else {
+                    fetchAndDisplayResults(pollId); 
                     const errorData = await response.json();
                     const detail = errorData.detail || 'Unknown error during vote.';
                     console.error('Error casting vote:', detail);
