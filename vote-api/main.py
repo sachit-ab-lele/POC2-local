@@ -16,15 +16,14 @@ from jose import JWTError, jwt
 
 app = FastAPI()
 
-# --- JWT Configuration (should match auth-api) ---
-JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "yoursupersecretkey") # Ensure this matches auth-api
+JWT_SECRET_KEY = os.environ.get("JWT_SECRET", "yoursupersecretkey")
 ALGORITHM = "HS256"
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token") # The URL doesn't matter much here as we're not using FastAPI's built-in form login
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 class TokenData(BaseModel):
-    sub: Optional[str] = None # 'sub' usually holds the username or user ID
+    sub: Optional[str] = None
     role: Optional[str] = None
-    id: Optional[int] = None # or str, depending on what auth-api puts in 'id'
+    id: Optional[int] = None
 
 class PyObjectId(ObjectId):
     @classmethod
@@ -68,18 +67,17 @@ r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, decode_respons
 client = MongoClient(os.getenv("MONGO_HOST", "mongo"), 27017)
 db = client.voting
 poll_collection = db.polls
-user_votes_collection = db.user_votes # New collection to track votes per user
+user_votes_collection = db.user_votes
 results_collection = db.results
 
 class PollInDB(PollBase):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id") # type: ignore
+    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     is_active: bool = False
     created_at: datetime
 
     class Config:
         allow_population_by_field_name = True
 
-# --- JWT Dependency ---
 async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> TokenData:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -90,7 +88,7 @@ async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> To
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         role: str = payload.get("role")
-        user_id: int = payload.get("id") # or str
+        user_id: int = payload.get("id")
         if username is None or role is None:
             raise credentials_exception
         token_data = TokenData(sub=username, role=role, id=user_id)
@@ -106,10 +104,8 @@ async def require_admin_user(current_user: TokenData = Depends(get_current_user_
         )
     return current_user
 
-# --- Poll Management Endpoints (Admin Only) ---
 @app.post("/polls", response_model=PollInDB, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_admin_user)])
 async def create_poll(poll_data: PollCreate, current_user: TokenData = Depends(require_admin_user)):
-    # current_user is available if needed, e.g., for logging who created the poll
     new_poll_doc = {
         "question": poll_data.question,
         "options": poll_data.options,
@@ -132,9 +128,6 @@ async def activate_poll(poll_id: str, current_user: TokenData = Depends(require_
     
     object_id_to_activate = ObjectId(poll_id)    
 
-    # No longer deactivating all other polls.
-    # poll_collection.update_many({}, {"$set": {"is_active": False}})
-    
     update_result: UpdateResult = poll_collection.update_one(
         {"_id": object_id_to_activate},
         {"$set": {"is_active": True}}
@@ -146,12 +139,10 @@ async def activate_poll(poll_id: str, current_user: TokenData = Depends(require_
     newly_active_poll = poll_collection.find_one({"_id": object_id_to_activate})
     if newly_active_poll:
         for option in newly_active_poll.get("options", []):
-            # Use poll-specific Redis keys
             r.set(f"vote:{str(object_id_to_activate)}:{option}", 0)
-        
         initial_snapshot = {opt: 0 for opt in newly_active_poll.get("options", [])}
         initial_snapshot["_poll_question"] = newly_active_poll.get("question")
-        initial_snapshot["_poll_id"] = str(object_id_to_activate) # Add poll_id to results
+        initial_snapshot["_poll_id"] = str(object_id_to_activate)
         initial_snapshot["_timestamp"] = datetime.utcnow()
         results_collection.insert_one(initial_snapshot)
         return {"message": f"Poll '{newly_active_poll.get('question')}' activated successfully."}
@@ -172,12 +163,6 @@ async def deactivate_poll(poll_id: str, current_user: TokenData = Depends(requir
 
     if update_result.matched_count == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found")
-
-    # Optionally, clear Redis votes for this poll upon deactivation
-    # poll_to_clear = poll_collection.find_one({"_id": object_id_to_deactivate})
-    # if poll_to_clear:
-    #     for option in poll_to_clear.get("options", []):
-    #         r.delete(f"vote:{str(object_id_to_deactivate)}:{option}")
     return {"message": f"Poll with ID {poll_id} deactivated successfully."}
 
 @app.delete("/polls/{poll_id}", status_code=status.HTTP_200_OK, dependencies=[Depends(require_admin_user)])
@@ -193,7 +178,6 @@ async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(requ
 
     if poll_to_delete.get("is_active"):
         for option in poll_to_delete.get("options", []):
-            # Use poll-specific Redis keys
             r.delete(f"vote:{str(object_id_to_delete)}:{option}")
 
     delete_result: DeleteResult = poll_collection.delete_one({"_id": object_id_to_delete})
@@ -202,15 +186,12 @@ async def delete_poll_by_id(poll_id: str, current_user: TokenData = Depends(requ
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found during delete operation")
 
     return {"message": f"Poll '{poll_to_delete.get('question')}' deleted successfully"}
-    # Also clear user_votes for the deleted poll
     user_votes_collection.delete_many({"poll_id": object_id_to_delete})
 
-# --- Public/User Endpoints ---
-@app.get("/polls/active", response_model=List[PollInDB]) # Returns a list of active polls
+@app.get("/polls/active", response_model=List[PollInDB])
 async def get_active_polls():
     active_polls = list(poll_collection.find({"is_active": True}).sort("created_at", -1))
     if not active_polls:
-        # Return empty list if no active polls, or raise 404 if that's preferred
         return [] 
     return active_polls
 
@@ -233,7 +214,6 @@ def cast_vote(
     if not user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User identifier not found in token.")
 
-    # Check if the user has already voted for this poll
     existing_vote = user_votes_collection.find_one({"user_id": user_id, "poll_id": target_poll_id})
     if existing_vote:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You have already voted in this poll.")
@@ -242,7 +222,7 @@ def cast_vote(
     if option_voted not in poll_options:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid option. Valid options are: {', '.join(poll_options)}")
 
-    r.incr(f"vote:{str(target_poll_id)}:{option_voted}") # Poll-specific Redis key
+    r.incr(f"vote:{str(target_poll_id)}:{option_voted}")
 
     user_votes_collection.insert_one({
         "user_id": user_id,
@@ -252,13 +232,13 @@ def cast_vote(
     })
     return {"message": f"Vote for {option_voted} recorded."}
 
-@app.get("/health") # Health check endpoint
+@app.get("/health")
 async def health_check():
     return {"status": "healthy"}
 
 origins = [
-    "http://10.25.156.34:31340", # The origin of your frontend
-    "http://10.25.156.39:31340", # Add other node IPs if you access frontend via them
+    "http://10.25.156.34:31340",
+    "http://10.25.156.39:31340", 
     "http://10.25.156.40:31340", 
     "http://localhost:8080",
 ]

@@ -59,21 +59,21 @@
                 const data = await response.json(); 
 
                 if (response.ok) {
-                    localStorage.setItem('accessToken', data.access_token); 
-                    localStorage.setItem('userRole', data.role); 
-                    localStorage.setItem('username', username); 
+                    localStorage.setItem('accessToken', data.access_token);
+                    localStorage.setItem('userRole', data.role);
+                    localStorage.setItem('username', username);
                     if (data.role === "admin") {
                         window.location.href = "/admin.html";
                     } else {
                         window.location.href = "/votepage.html";
                     }
                 } else {
-                    const errorData = await response.json();
+                    
                     errorMessageElement.textContent = data.detail || "Login failed. Please check your credentials.";
                     errorMessageElement.style.display = "block";
                 }
-            } catch (error) {
-                console.error('Login error:', error);
+            } catch (error) { 
+                console.error('Login error:', error); 
                 errorMessageElement.textContent = "An unexpected error occurred. Please try again later.";
                 errorMessageElement.style.display = "block";
             }

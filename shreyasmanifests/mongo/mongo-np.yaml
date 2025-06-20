@@ -2,25 +2,21 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: allow-backend-to-mongo
-  namespace: voting-app # Changed to voting-app
+  namespace: voting-app
 spec:
   podSelector:
-    matchLabels: 
-      app: mongo 
+    matchLabels:
+      app: mongo
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: vote-api # Allow from vote-api
+          app: vote-api
     - podSelector:
         matchLabels:
-          app: result-api # Allow from result-api
-    # If you still want to allow from the test pod:
-    # - podSelector:
-    #     matchLabels:
-    #       role: backend
-    ports: # Specify the port
+          app: result-api
+    ports:
     - protocol: TCP
       port: 27017

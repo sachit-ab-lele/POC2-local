@@ -38,7 +38,7 @@ def get_db_connection():
         print(f"Database connection failed: {e}") 
         raise HTTPException(status_code=500, detail="Database connection error")
 
-# --- Pydantic Models ---
+
 class UserLogin(BaseModel):
     username: str
     password: str

@@ -41,16 +41,20 @@
                     }
                 });
                 if (response.ok) {
-                    console.log(`Vote for ${candidateName} successfully cast!`);
-                    fetchAndDisplayResults(pollId); 
+
+                    const data = await response.json();
+                    console.log(`Vote for ${candidateName} successfully cast! Message: ${data.message}`);
+                    fetchAndDisplayResults(pollId);
+                } else {
+                
                     const errorData = await response.json();
                     const detail = errorData.detail || 'Unknown error during vote.';
                     console.error('Error casting vote:', detail);
                     if(resultsElement) resultsElement.innerText = `Error casting vote: ${detail}`;
                 }
-            } catch (error) {
-                console.error('Network error during vote:', error);
-                if(resultsElement) resultsElement.innerText = 'A network error occurred while voting. Please check your connection.';
+            } catch (error) { 
+                console.error('Network or parsing error during vote:', error);
+                if(resultsElement) resultsElement.innerText = 'A network or parsing error occurred while voting. Please check your connection or try again.';
             }
         }
 

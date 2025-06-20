@@ -9,4 +9,3 @@ spec:
   - name: tester
     image: bitnami/minideb
     command: ["sleep", "3600"]
-
