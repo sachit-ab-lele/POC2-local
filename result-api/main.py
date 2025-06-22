@@ -28,11 +28,11 @@ def get_results(poll_id: str = Query(..., description="The ID of the poll to fet
 
     options = poll.get("options", [])
     if not options:
-        return {} # Or {"error": "Poll has no options"}
+        return {} 
 
     vote_counts = {}
     for option in options:
-        count = r.get(f"vote:{poll_id}:{option}") # Use poll-specific Redis key
+        count = r.get(f"vote:{poll_id}:{option}") 
         vote_counts[option] = int(count) if count is not None else 0
     return vote_counts
 
