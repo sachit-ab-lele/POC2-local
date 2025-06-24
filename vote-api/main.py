@@ -241,6 +241,8 @@ origins = [
     "http://10.25.156.39:31340", 
     "http://10.25.156.40:31340", 
     "http://localhost:8080",
+    "http://10.25.156.163", 
+    "http://10.25.156.89"
 ]
 
 app.add_middleware(
