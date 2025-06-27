@@ -16,10 +16,15 @@
         .btn-danger:hover { background-color: #b91c1c; }
         .btn-success { background-color: #16a34a; color: white; }
         .btn-success:hover { background-color: #15803d; }
-        .poll-item { border: 1px solid #e5e7eb; padding: 10px; margin-bottom:10px; border-radius: 4px; }
+        .poll-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #e5e7eb; padding: 10px; margin-bottom:10px; border-radius: 4px; flex-wrap: wrap; }
+        .poll-item > span { flex-grow: 1; }
         #messageArea { margin-top: 15px; padding: 10px; border-radius: 4px; }
         .message-success { background-color: #d1fae5; color: #065f46; }
         .message-error { background-color: #fee2e2; color: #991b1b; }
+        .voters-list { width: 100%; } /* Make the table span the full width */
+        .voters-list table { width: 100%; text-align: left; border-collapse: collapse; }
+        .voters-list th, .voters-list td { border-bottom: 1px solid #e5e7eb; padding: 8px; }
+        .voters-list th { background-color: #f9fafb; }
     </style>
 </head>
 <body>
@@ -129,6 +134,7 @@
                     pollDiv.appendChild(pollText);
 
                     const buttonsDiv = document.createElement('div');
+                    buttonsDiv.className = 'flex-shrink-0';
 
                     if (!poll.is_active) {
                         const activateButton = document.createElement('button');
@@ -137,6 +143,12 @@
                         activateButton.onclick = () => activatePoll(poll._id);
                         buttonsDiv.appendChild(activateButton);
                     }
+
+                    const viewVotersButton = document.createElement('button');
+                    viewVotersButton.textContent = 'View Voters';
+                    viewVotersButton.className = 'btn btn-primary ml-2';
+                    viewVotersButton.onclick = () => toggleVotersView(poll._id, pollDiv);
+                    buttonsDiv.appendChild(viewVotersButton);
 
                     const deleteButton = document.createElement('button');
                     deleteButton.textContent = 'Delete';
@@ -168,6 +180,48 @@
             if (result) {
                 displayMessage(result.message || `Poll deleted successfully!`);
                 listPolls();
+            }
+        }
+
+        async function toggleVotersView(pollId, pollDiv) {
+            const existingVotersDiv = pollDiv.querySelector('.voters-list');
+            if (existingVotersDiv) {
+                existingVotersDiv.remove();
+                return;
+            }
+
+            const voters = await makeApiCall(`/polls/${pollId}/voters`);
+            if (voters) {
+                const votersDiv = document.createElement('div');
+                votersDiv.className = 'voters-list mt-4 p-4 border-t border-gray-200';
+
+                if (voters.length > 0) {
+                    const table = document.createElement('table');
+                    table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Voted For</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                    `;
+                    const tbody = document.createElement('tbody');
+                    voters.forEach(voter => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${voter.username}</td>
+                            <td>${voter.option_voted}</td>
+                            <td>${new Date(voter.timestamp).toLocaleString()}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    votersDiv.appendChild(table);
+                } else {
+                    votersDiv.innerHTML = '<p>No votes have been cast in this poll yet.</p>';
+                }
+                pollDiv.appendChild(votersDiv);
             }
         }
 

@@ -78,6 +78,11 @@ class PollInDB(PollBase):
     class Config:
         allow_population_by_field_name = True
 
+class VoterDetail(BaseModel):
+    username: str
+    option_voted: str
+    timestamp: datetime
+
 async def get_current_user_token_data(token: str = Depends(oauth2_scheme)) -> TokenData:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -195,6 +200,31 @@ async def get_active_polls():
         return [] 
     return active_polls
 
+@app.get("/polls/{poll_id}/voters", response_model=List[VoterDetail], dependencies=[Depends(require_admin_user)])
+async def get_poll_voters(poll_id: str, current_user: TokenData = Depends(require_admin_user)):
+    if not ObjectId.is_valid(poll_id):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Poll ID format")
+    
+    target_poll_id = ObjectId(poll_id)
+    
+    # Check if poll exists to ensure the ID is valid in the context of polls
+    poll = poll_collection.find_one({"_id": target_poll_id})
+    if not poll:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found")
+
+    voters_cursor = user_votes_collection.find(
+        {"poll_id": target_poll_id}, 
+        {"_id": 0, "username": 1, "option_voted": 1, "timestamp": 1}
+    ).sort("timestamp", -1)
+    
+    voters = []
+    for voter in voters_cursor:
+        if "username" not in voter:
+            voter["username"] = "N/A (old vote)"
+        voters.append(voter)
+
+    return voters
+
 @app.post("/vote", dependencies=[Depends(get_current_user_token_data)])
 def cast_vote(
     poll_id: str = Query(..., description="The ID of the poll to vote on"),
@@ -210,8 +240,9 @@ def cast_vote(
     if not poll_to_vote_on:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Active poll with the given ID not found or is not active.")
     
-    user_id = current_user.id 
-    if not user_id:
+    user_id = current_user.id
+    username = current_user.sub
+    if not user_id or not username:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User identifier not found in token.")
 
     existing_vote = user_votes_collection.find_one({"user_id": user_id, "poll_id": target_poll_id})
@@ -226,6 +257,7 @@ def cast_vote(
 
     user_votes_collection.insert_one({
         "user_id": user_id,
+        "username": username,
         "poll_id": target_poll_id,
         "option_voted": option_voted,
         "timestamp": datetime.utcnow()
