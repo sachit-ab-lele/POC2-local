@@ -207,7 +207,6 @@ async def get_poll_voters(poll_id: str, current_user: TokenData = Depends(requir
     
     target_poll_id = ObjectId(poll_id)
     
-    # Check if poll exists to ensure the ID is valid in the context of polls
     poll = poll_collection.find_one({"_id": target_poll_id})
     if not poll:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Poll with ID {poll_id} not found")
