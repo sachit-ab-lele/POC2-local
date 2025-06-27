@@ -1,18 +1,18 @@
 from fastapi import FastAPI, Query, HTTPException, status
 from pymongo import MongoClient
 from fastapi.middleware.cors import CORSMiddleware
-from bson import ObjectId # Import ObjectId
+from bson import ObjectId 
 import redis
 import os
 
 app = FastAPI()
 
-# MongoDB Connection
+
 client = MongoClient(os.getenv("MONGO_HOST", "mongo"), 27017)
 db = client.voting
 poll_collection = db.polls
 
-# Redis Connection
+
 r = redis.Redis(host=os.getenv("REDIS_HOST", "redis"), port=6379, decode_responses=True)
 
 @app.get("/results")
